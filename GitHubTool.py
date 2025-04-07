@@ -1,13 +1,19 @@
 import base64
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple, Union
+import os
 import requests
 from requests.exceptions import RequestException
 from smolagents import tool
 from gitingest import ingest
 from github import Auth
 from github import Github
+from dotenv import load_dotenv
 
-GITHUB_TOKEN = ""
+# Load environment variables from .env file
+load_dotenv()
+
+# Get GitHub token from environment variables, with empty string as fallback
+GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
 
 @tool
 def get_github_workflow_names(owner: str, repo: str) -> List[str]:
@@ -30,8 +36,8 @@ def get_github_workflow_names(owner: str, repo: str) -> List[str]:
         This function can be used to check for security-related workflows
         by looking for names like "CodeQL", "Security Scan", or "SAST Scan".
     """
-    auth = Auth.Token(GITHUB_TOKEN)
-    g = Github(auth=auth)
+    auth: Auth.Token = Auth.Token(GITHUB_TOKEN)
+    g: Github = Github(auth=auth)
 
     try:
         repository = g.get_repo(f"{owner}/{repo}")
@@ -59,12 +65,11 @@ def get_github_project_file(owner: str, repo: str, path: str) -> str:
              or an error message if the request fails.
     """
 
-    auth = Auth.Token(GITHUB_TOKEN)
-    g = Github(auth=auth)
+    auth: Auth.Token = Auth.Token(GITHUB_TOKEN)
+    g: Github = Github(auth=auth)
 
     try:
         # Get the repository
-
         repository = g.get_repo(f"{owner}/{repo}")
 
         # Get the file content
@@ -88,7 +93,7 @@ def get_github_project_directory_tree(repository_url: str) -> str:
 
     """
     try:
-        MAX_FILE_SIZE = 1 * 1024 * 1024  # 1 MB
+        MAX_FILE_SIZE: int = 1 * 1024 * 1024  # 1 MB
         #EXCLUDE_PATTERNS = ["*.test.js", "*.spec.js", "*.test.ts", "*.spec.ts", "*.test.py", "*.spec.py", "test/", "tests/"]
         summary, tree, content = ingest(repository_url, max_file_size=MAX_FILE_SIZE)
         return tree
@@ -108,8 +113,8 @@ def get_github_readme(owner: str, repo: str) -> str:
         str: The content of the README file in plain text (decoded from base64),
              or an error message if the request fails.
     """
-    url = f"https://api.github.com/repos/{owner}/{repo}/readme"
-    headers = {
+    url: str = f"https://api.github.com/repos/{owner}/{repo}/readme"
+    headers: Dict[str, str] = {
         "Accept": "application/vnd.github+json",
         "Authorization": f"Bearer {GITHUB_TOKEN}",
         "X-GitHub-Api-Version": "2022-11-28"
@@ -117,14 +122,14 @@ def get_github_readme(owner: str, repo: str) -> str:
 
     try:
         # Send a GET request to GitHub API
-        response = requests.get(url, headers=headers)
+        response: requests.Response = requests.get(url, headers=headers)
         response.raise_for_status()  # Raise an exception for non-200 responses
 
         # Parse the JSON response
-        data = response.json()
+        data: Dict[str, Any] = response.json()
 
         # Decode the base64 README content
-        readme_content = base64.b64decode(data["content"]).decode("utf-8")
+        readme_content: str = base64.b64decode(data["content"]).decode("utf-8")
 
         return readme_content.strip()
 
